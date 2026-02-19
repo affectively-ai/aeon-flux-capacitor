@@ -74,3 +74,6 @@ export { VoiceInterface, type VoiceMode, type VoiceCommand, type VoiceIntent, ty
 
 // Layout (Information Economics + ESI Personalization)
 export { ContentKnapsack, type ContentItem, type ContentValue, type ContentWeight, type LayoutDecision, type LayoutResult, type RenderMode, type LayoutManifest, type PersonalizationContext, type ESIValueOverride, type ESIKnapsackConfig } from './layout/ContentKnapsack';
+
+// Container (The Intelligent Wrapper)
+export { Capacitor, type CapacitorConfig, type CapacitorBlock, type CapacitorEvent, type CapacitorState, type ProjectionType } from './container/Capacitor';
