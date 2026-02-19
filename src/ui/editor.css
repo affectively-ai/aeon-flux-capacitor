@@ -1098,3 +1098,417 @@
 .afc-ghost-block .afc-ghost-content {
   display: block;
 }
+
+/* ═══════════════════════════════════════════════════════
+   Reading Projection
+   ═══════════════════════════════════════════════════════ */
+
+.afc-reading-root {
+  font-family: var(--reading-font, 'Source Serif 4', Georgia, serif);
+  font-size: var(--reading-font-size, 20px);
+  line-height: var(--reading-line-height, 1.8);
+  max-width: var(--reading-max-width, 680px);
+  margin: 0 auto;
+  padding: 4rem 1.5rem 8rem;
+  color: var(--afc-text-primary);
+}
+
+.afc-reading-root p {
+  margin-bottom: var(--reading-paragraph-spacing, 1.2em);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.afc-reading-header {
+  margin-bottom: 3rem;
+}
+
+.afc-reading-header h1 {
+  font-size: 2.5em;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.afc-reading-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-family: var(--afc-font-ui);
+  font-size: 0.875rem;
+  color: var(--afc-text-secondary);
+}
+
+.afc-reading-time {
+  color: var(--afc-accent);
+  font-weight: 500;
+}
+
+/* Focus mode: dim all paragraphs except the one in viewport */
+.afc-reading-root.focus-mode .afc-reading-block {
+  opacity: 0.15;
+  transition: opacity 0.4s ease;
+}
+
+.afc-reading-root.focus-mode .afc-reading-block.in-view {
+  opacity: 1;
+}
+
+/* Tufte sidenotes */
+.afc-sidenote {
+  float: right;
+  clear: right;
+  margin-right: -45%;
+  width: 40%;
+  margin-top: 0.3rem;
+  font-size: 0.8em;
+  line-height: 1.5;
+  color: var(--afc-text-secondary);
+  position: relative;
+}
+
+.afc-sidenote-number {
+  font-size: 0.7em;
+  vertical-align: super;
+  color: var(--afc-accent);
+  cursor: pointer;
+}
+
+/* Footnotes (collapsed on mobile) */
+.afc-footnotes {
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--afc-border-subtle);
+}
+
+.afc-footnote {
+  font-size: 0.85em;
+  line-height: 1.6;
+  color: var(--afc-text-secondary);
+  margin-bottom: 0.5em;
+}
+
+.afc-footnote-ref {
+  margin-right: 0.5em;
+  color: var(--afc-accent);
+  cursor: pointer;
+}
+
+/* Table of Contents */
+.afc-toc {
+  position: sticky;
+  top: 2rem;
+  font-family: var(--afc-font-ui);
+  font-size: 0.8125rem;
+  line-height: 1.8;
+  color: var(--afc-text-tertiary);
+}
+
+.afc-toc-item {
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.afc-toc-item:hover {
+  color: var(--afc-text-primary);
+}
+
+.afc-toc-item.active {
+  color: var(--afc-accent);
+  border-left-color: var(--afc-accent);
+}
+
+.afc-toc-depth-2 {
+  padding-left: 24px;
+}
+
+.afc-toc-depth-3 {
+  padding-left: 36px;
+}
+
+/* Progress bar */
+.afc-reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--afc-accent), hsla(264, 80%, 64%, 0.6));
+  transition: width 0.15s ease;
+  z-index: 900;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Collaboration Presence
+   ═══════════════════════════════════════════════════════ */
+
+.afc-presence-bar {
+  display: flex;
+  align-items: center;
+  gap: -4px;
+  padding: 4px 8px;
+}
+
+.afc-collaborator-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--collaborator-color, var(--afc-accent));
+  margin-left: -6px;
+  transition: transform 0.2s ease;
+  object-fit: cover;
+}
+
+.afc-collaborator-avatar:first-child {
+  margin-left: 0;
+}
+
+.afc-collaborator-avatar:hover {
+  transform: scale(1.15);
+  z-index: 1;
+}
+
+.afc-collaborator-avatar.idle {
+  opacity: 0.5;
+}
+
+.afc-collaborator-avatar.away {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+
+/* Remote cursor */
+.afc-remote-cursor {
+  position: absolute;
+  width: 2px;
+  height: 1.2em;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.afc-remote-cursor-label {
+  position: absolute;
+  top: -1.4em;
+  left: 2px;
+  font-family: var(--afc-font-ui);
+  font-size: 0.625rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+  color: #fff;
+}
+
+/* Typing indicator */
+.afc-typing-indicator {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.afc-typing-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--collaborator-color, var(--afc-accent));
+  animation: afc-typing-bounce 1.2s infinite;
+}
+
+.afc-typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.afc-typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes afc-typing-bounce {
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Inline Comments
+   ═══════════════════════════════════════════════════════ */
+
+.afc-comment-highlight {
+  background: hsla(50, 100%, 60%, 0.12);
+  border-bottom: 2px solid hsla(50, 100%, 60%, 0.3);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.afc-comment-highlight:hover {
+  background: hsla(50, 100%, 60%, 0.22);
+}
+
+.afc-comment-thread {
+  position: absolute;
+  right: -320px;
+  width: 300px;
+  background: var(--afc-bg-secondary);
+  border: 1px solid var(--afc-border-subtle);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 200;
+}
+
+.afc-comment {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--afc-border-subtle);
+}
+
+.afc-comment:last-child {
+  border-bottom: none;
+}
+
+.afc-comment-author {
+  font-family: var(--afc-font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--afc-text-primary);
+}
+
+.afc-comment-body {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--afc-text-secondary);
+  margin-top: 4px;
+}
+
+.afc-comment-time {
+  font-size: 0.6875rem;
+  color: var(--afc-text-tertiary);
+  margin-top: 4px;
+}
+
+.afc-comment-reactions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.afc-comment-reaction {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--afc-bg-tertiary);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.afc-comment-reaction:hover {
+  background: var(--afc-bg-primary);
+}
+
+/* Suggested edits */
+.afc-suggested-edit {
+  background: hsla(120, 60%, 40%, 0.06);
+  border-left: 3px solid hsla(120, 60%, 50%, 0.4);
+  padding: 4px 8px;
+  margin: 2px 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.afc-suggested-edit-original {
+  text-decoration: line-through;
+  color: var(--afc-text-tertiary);
+}
+
+.afc-suggested-edit-replacement {
+  color: hsla(120, 60%, 65%, 1);
+  font-weight: 500;
+}
+
+.afc-suggested-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.afc-suggested-edit-actions button {
+  font-family: var(--afc-font-ui);
+  font-size: 0.6875rem;
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--afc-border-subtle);
+  background: transparent;
+  color: var(--afc-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.afc-suggested-edit-actions button.accept {
+  border-color: hsla(120, 60%, 50%, 0.5);
+  color: hsla(120, 60%, 65%, 1);
+}
+
+.afc-suggested-edit-actions button.accept:hover {
+  background: hsla(120, 60%, 50%, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Provenance Badge
+   ═══════════════════════════════════════════════════════ */
+
+.afc-provenance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--afc-font-ui);
+  font-size: 0.625rem;
+  color: var(--afc-text-tertiary);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--afc-bg-tertiary);
+  user-select: none;
+}
+
+.afc-provenance-badge.verified::before {
+  content: '✓';
+  color: hsla(120, 60%, 50%, 0.8);
+  font-weight: 700;
+}
+
+.afc-provenance-badge.ai-assisted {
+  border: 1px solid hsla(264, 80%, 64%, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Engagement Heatmap overlay
+   ═══════════════════════════════════════════════════════ */
+
+.afc-engagement-gutter {
+  position: absolute;
+  left: -24px;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: 2px;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+/* Responsive: collapse sidenotes on narrow screens */
+@media (max-width: 1100px) {
+  .afc-sidenote {
+    float: none;
+    width: 100%;
+    margin-right: 0;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    padding: 8px 12px;
+    background: var(--afc-bg-tertiary);
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+}
