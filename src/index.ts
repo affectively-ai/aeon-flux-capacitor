@@ -52,3 +52,22 @@ export { ContentProvenance, type ProvenanceRecord, type ProvenanceChain, type Pr
 
 // Analytics
 export { ReadingAnalytics, type ReadingSession, type DocumentAnalytics, type BlockEngagement } from './analytics/ReadingAnalytics';
+
+// Dual Index (Amygdala / Hippocampus)
+export { DualIndex, type AmygdalaEntry, type HippocampusEntry, type RenderSample, type InterpolatedSample, type SomaticMarker } from './core/DualIndex';
+
+// Temporal
+export { TemporalNavigation, type TemporalSnapshot, type TemporalDiff, type TemporalCurve, type TemporalBlockState } from './temporal/TemporalNavigation';
+
+// Document Intelligence
+export { DocumentOracle, type OracleInsight, type OracleInsightType, type DocumentProfile } from './intelligence/DocumentOracle';
+export { EmotionalResonance, type EmotionalImpact, type EmotionalArc, type ArcType, type Emotion } from './intelligence/EmotionalResonance';
+export { ReaderWriterSymbiosis, type ReaderSignal, type SymbiosisAnnotation, type AggregatedReaderData } from './intelligence/ReaderWriterSymbiosis';
+export { DocumentMetabolism, type BlockFreshness, type DocumentHealth, type ContentLifespan } from './intelligence/DocumentMetabolism';
+export { KnowledgeFabric, type FabricSuggestion, type FabricRelationship, type FabricUsage } from './intelligence/KnowledgeFabric';
+
+// Capability Sharing
+export { CapabilitySharing, type ShareLink, type Group, type GroupMember, type Capability, type ShareAudience, type CapabilityGrant } from './sharing/CapabilitySharing';
+
+// Voice Interface (Edgework STT)
+export { VoiceInterface, type VoiceMode, type VoiceCommand, type VoiceIntent, type VoiceState, type VoiceEvent } from './voice/VoiceInterface';
