@@ -72,5 +72,5 @@ export { CapabilitySharing, type ShareLink, type Group, type GroupMember, type C
 // Voice Interface (Edgework STT)
 export { VoiceInterface, type VoiceMode, type VoiceCommand, type VoiceIntent, type VoiceState, type VoiceEvent } from './voice/VoiceInterface';
 
-// Layout (Information Economics)
-export { ContentKnapsack, type ContentItem, type ContentValue, type ContentWeight, type LayoutDecision, type LayoutResult, type RenderMode } from './layout/ContentKnapsack';
+// Layout (Information Economics + ESI Personalization)
+export { ContentKnapsack, type ContentItem, type ContentValue, type ContentWeight, type LayoutDecision, type LayoutResult, type RenderMode, type LayoutManifest, type PersonalizationContext, type ESIValueOverride, type ESIKnapsackConfig } from './layout/ContentKnapsack';

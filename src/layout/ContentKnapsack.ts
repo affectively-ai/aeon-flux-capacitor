@@ -18,6 +18,12 @@
  *   - Reading behavior feeds back into value (highlight → value ↑, skip → value ↓)
  *   - As the reader scrolls, the knapsack re-solves for current viewport
  *
+ * ESI PERSONALIZATION:
+ *   - Value signals can be overridden per-reader via ESI tags
+ *   - <esi:include src="/knapsack/values?reader={did}&block={id}" />
+ *   - The edge resolves personalized values before the knapsack solves
+ *   - Same document, different layout per reader. Information economics.
+ *
  * This is NOT responsive design. This is INFORMATION ECONOMICS.
  */
 
@@ -125,6 +131,89 @@ export interface KnapsackConfig {
     readonly animateTransitions?: boolean;
     /** Transition duration in ms */
     readonly transitionMs?: number;
+    /** ESI configuration for personalization */
+    readonly esi?: ESIKnapsackConfig;
+}
+
+// ── ESI Personalization ─────────────────────────────────────────────
+
+/**
+ * ESI-aware knapsack configuration.
+ * When ESI is enabled, the knapsack renders ESI include tags
+ * that the edge resolves per-reader before layout is computed client-side.
+ */
+export interface ESIKnapsackConfig {
+    /** Whether ESI personalization is enabled */
+    readonly enabled: boolean;
+    /** Base URL for ESI value resolution */
+    readonly baseUrl: string;
+    /** Cache TTL for personalized values (seconds) */
+    readonly cacheTTL?: number;
+    /** Fallback to unpersonalized values when ESI fails */
+    readonly fallbackToDefault?: boolean;
+}
+
+/**
+ * Per-reader personalization context, resolved at the edge.
+ * This is what makes the same document layout differently for each reader.
+ */
+export interface PersonalizationContext {
+    /** Reader DID (for UCAN-scoped personalization) */
+    readonly readerDid: string;
+    /** Reader's engagement history with this document */
+    readonly engagementHistory?: ReaderHistory;
+    /** Reader's declared interests/preferences */
+    readonly preferences?: ReaderPreferences;
+    /** Reader's reading level (affects cognitive load budget) */
+    readonly readingLevel?: 'casual' | 'standard' | 'expert';
+    /** Reader's device class (affects container capacity) */
+    readonly deviceClass?: 'phone' | 'tablet' | 'desktop' | 'tv';
+}
+
+export interface ReaderHistory {
+    /** Blocks previously read (for de-prioritizing seen content) */
+    readonly blocksRead: string[];
+    /** Blocks previously highlighted */
+    readonly blocksHighlighted: string[];
+    /** Time spent per block in previous sessions */
+    readonly timePerBlock: Record<string, number>;
+    /** Last read position */
+    readonly lastPosition?: string;
+    /** Number of visits */
+    readonly visitCount: number;
+}
+
+export interface ReaderPreferences {
+    /** Preferred topics (boost value of matching blocks) */
+    readonly topics: string[];
+    /** Content density preference */
+    readonly density: 'sparse' | 'normal' | 'dense';
+    /** Whether to show code blocks (non-technical readers hide code) */
+    readonly showCode: boolean;
+    /** Whether to expand examples */
+    readonly showExamples: boolean;
+    /** Preferred emotional tone (boost/demote blocks by tone) */
+    readonly tonePref?: 'formal' | 'casual' | 'neutral';
+}
+
+/**
+ * ESI-resolved per-block value override.
+ * The edge returns this for each block, personalized per reader.
+ */
+export interface ESIValueOverride {
+    readonly blockId: string;
+    /** Override emotional intensity based on reader's emotional profile */
+    readonly emotionalIntensity?: number;
+    /** Override relevance based on reader's interests */
+    readonly contextualRelevance?: number;
+    /** Override freshness based on reader's last visit */
+    readonly freshness?: number;
+    /** Override engagement based on reader's history with this content */
+    readonly readerEngagement?: number;
+    /** Boost factor (multiplicative, 1.0 = no change) */
+    readonly boostFactor?: number;
+    /** Force a render mode regardless of knapsack solution */
+    readonly forceRenderMode?: RenderMode;
 }
 
 export interface LayoutResult {
@@ -145,15 +234,20 @@ export interface LayoutResult {
         containerCapacity: number;
         itemCount: number;
     };
+    /** Whether this layout was personalized via ESI */
+    readonly personalized: boolean;
+    /** Reader DID if personalized */
+    readonly readerDid?: string;
 }
 
 // ── Content Knapsack Engine ─────────────────────────────────────────
 
 export class ContentKnapsack {
-    private config: Required<KnapsackConfig>;
+    private config: Required<Omit<KnapsackConfig, 'esi'>> & { esi?: ESIKnapsackConfig };
     private items: Map<string, ContentItem> = new Map();
     private values: Map<string, ContentValue> = new Map();
     private weights: Map<string, ContentWeight> = new Map();
+    private esiOverrides: Map<string, ESIValueOverride> = new Map();
     private lastResult: LayoutResult | null = null;
     private listeners: Set<(result: LayoutResult) => void> = new Set();
 
@@ -172,6 +266,7 @@ export class ContentKnapsack {
             },
             animateTransitions: config?.animateTransitions ?? true,
             transitionMs: config?.transitionMs ?? 300,
+            esi: config?.esi,
         };
     }
 
@@ -411,6 +506,227 @@ export class ContentKnapsack {
         return () => this.listeners.delete(listener);
     }
 
+    // ── ESI Personalization ──────────────────────────────────────
+
+    /**
+     * Apply per-reader ESI value overrides.
+     * These are resolved at the edge before the client-side knapsack runs.
+     */
+    applyESIOverrides(overrides: ESIValueOverride[]): void {
+        for (const override of overrides) {
+            this.esiOverrides.set(override.blockId, override);
+
+            // Apply overrides to the value signals
+            const existing = this.values.get(override.blockId);
+            if (existing) {
+                this.updateValue(override.blockId, {
+                    emotionalIntensity: override.emotionalIntensity ?? existing.emotionalIntensity,
+                    contextualRelevance: override.contextualRelevance ?? existing.contextualRelevance,
+                    freshness: override.freshness ?? existing.freshness,
+                    readerEngagement: override.readerEngagement ?? existing.readerEngagement,
+                });
+
+                // Apply boost factor
+                if (override.boostFactor && override.boostFactor !== 1.0) {
+                    const boosted = this.values.get(override.blockId)!;
+                    const boostedComposite = boosted.compositeValue * override.boostFactor;
+                    this.values.set(override.blockId, { ...boosted, compositeValue: boostedComposite } as ContentValue);
+                }
+            }
+        }
+    }
+
+    /**
+     * Personalize the knapsack for a specific reader.
+     * This adjusts values based on the reader's context and then solves.
+     */
+    personalizedSolve(
+        constraints: ContainerConstraints,
+        context: PersonalizationContext,
+    ): LayoutResult {
+        // Adjust container capacity based on device class
+        const adjustedConstraints = this.adjustForDevice(constraints, context);
+
+        // Adjust cognitive load budget based on reading level
+        const cognitiveConstraints = this.adjustCognitiveLoad(adjustedConstraints, context);
+
+        // Apply preference-based value adjustments
+        this.applyPreferenceBoosts(context);
+
+        // Apply history-based adjustments (de-prioritize already-read content)
+        this.applyHistoryAdjustments(context);
+
+        // Solve with personalized values
+        const result = this.solve(cognitiveConstraints);
+
+        // Apply forced render modes from ESI overrides
+        for (const decision of result.decisions) {
+            const override = this.esiOverrides.get(decision.blockId);
+            if (override?.forceRenderMode) {
+                (decision as { renderMode: RenderMode }).renderMode = override.forceRenderMode;
+            }
+        }
+
+        // Tag the result as personalized
+        return {
+            ...result,
+            personalized: true,
+            readerDid: context.readerDid,
+        };
+    }
+
+    /**
+     * Generate ESI include tags for server-side resolution.
+     * These are embedded in the document HTML for edge processing.
+     */
+    generateESITags(documentId: string): string[] {
+        if (!this.config.esi?.enabled) return [];
+
+        const baseUrl = this.config.esi.baseUrl;
+        const ttl = this.config.esi.cacheTTL ?? 300;
+        const tags: string[] = [];
+
+        // Per-block value resolution
+        for (const blockId of this.items.keys()) {
+            tags.push(
+                `<esi:include src="${baseUrl}/knapsack/values?block=${blockId}&doc=${documentId}" ` +
+                `ttl="${ttl}" ` +
+                `onerror="continue" />`,
+            );
+        }
+
+        // Reader context resolution
+        tags.push(
+            `<esi:include src="${baseUrl}/knapsack/context?doc=${documentId}" ` +
+            `ttl="${ttl}" ` +
+            `onerror="continue" />`,
+        );
+
+        return tags;
+    }
+
+    /**
+     * Generate a serializable layout manifest for SSR.
+     * The edge can pre-compute this and embed it in the HTML.
+     */
+    generateLayoutManifest(documentId: string): LayoutManifest {
+        const result = this.lastResult;
+        return {
+            documentId,
+            timestamp: Date.now(),
+            decisions: result?.decisions ?? [],
+            esiEnabled: this.config.esi?.enabled ?? false,
+            esiTags: this.generateESITags(documentId),
+        };
+    }
+
+    // ── ESI Private Helpers ──────────────────────────────────────
+
+    private adjustForDevice(
+        constraints: ContainerConstraints,
+        context: PersonalizationContext,
+    ): ContainerConstraints {
+        // Mobile gets tighter capacity → more aggressive compression
+        const deviceMultiplier = {
+            phone: 0.4,
+            tablet: 0.7,
+            desktop: 1.0,
+            tv: 1.5,
+        };
+
+        const mult = context.deviceClass
+            ? deviceMultiplier[context.deviceClass]
+            : 1.0;
+
+        return {
+            ...constraints,
+            heightPx: Math.round(constraints.heightPx * mult),
+        };
+    }
+
+    private adjustCognitiveLoad(
+        constraints: ContainerConstraints,
+        context: PersonalizationContext,
+    ): ContainerConstraints {
+        const loadBudget = {
+            casual: 0.4,
+            standard: 0.7,
+            expert: 1.0,
+        };
+
+        const budget = context.readingLevel
+            ? loadBudget[context.readingLevel]
+            : constraints.maxCognitiveLoad;
+
+        return {
+            ...constraints,
+            maxCognitiveLoad: budget,
+        };
+    }
+
+    private applyPreferenceBoosts(context: PersonalizationContext): void {
+        if (!context.preferences) return;
+
+        for (const [blockId, item] of this.items) {
+            const value = this.values.get(blockId);
+            if (!value) continue;
+
+            let boost = 1.0;
+
+            // Hide code for non-technical readers
+            if (!context.preferences.showCode && item.blockType === 'code') {
+                boost = 0.05; // nearly hidden
+            }
+
+            // Density preference adjusts compression thresholds
+            if (context.preferences.density === 'sparse') {
+                boost *= 0.8; // everything gets less space
+            } else if (context.preferences.density === 'dense') {
+                boost *= 1.2; // everything gets more space
+            }
+
+            if (boost !== 1.0) {
+                this.values.set(blockId, {
+                    ...value,
+                    compositeValue: value.compositeValue * boost,
+                } as ContentValue);
+            }
+        }
+    }
+
+    private applyHistoryAdjustments(context: PersonalizationContext): void {
+        if (!context.engagementHistory) return;
+
+        const history = context.engagementHistory;
+
+        for (const blockId of this.items.keys()) {
+            const value = this.values.get(blockId);
+            if (!value) continue;
+
+            let modifier = 1.0;
+
+            // De-prioritize already-read blocks on repeat visits
+            if (history.blocksRead.includes(blockId) && history.visitCount > 1) {
+                modifier *= 0.6; // returning readers see less-read content promoted
+            }
+
+            // Boost blocks they previously highlighted (they care about these)
+            if (history.blocksHighlighted.includes(blockId)) {
+                modifier *= 1.5;
+            }
+
+            // Boost content after their last read position (continue where they left off)
+            // This is handled by tracking position rather than modifying values
+
+            if (modifier !== 1.0) {
+                this.values.set(blockId, {
+                    ...value,
+                    compositeValue: value.compositeValue * modifier,
+                } as ContentValue);
+            }
+        }
+    }
+
     // ── Solvers ───────────────────────────────────────────────────
 
     /**
@@ -503,4 +819,14 @@ export class ContentKnapsack {
     private notify(result: LayoutResult): void {
         for (const listener of this.listeners) listener(result);
     }
+}
+
+// ── Layout Manifest (for SSR/ESI) ───────────────────────────────────
+
+export interface LayoutManifest {
+    readonly documentId: string;
+    readonly timestamp: number;
+    readonly decisions: LayoutDecision[];
+    readonly esiEnabled: boolean;
+    readonly esiTags: string[];
 }
