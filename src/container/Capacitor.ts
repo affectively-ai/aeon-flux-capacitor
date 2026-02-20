@@ -54,7 +54,7 @@ import { DualIndex } from '../core/DualIndex';
 
 // ── Types ───────────────────────────────────────────────────────────
 
-export type ProjectionType = 'text' | 'audio' | 'spatial' | 'reading';
+export type ProjectionType = 'text' | 'audio' | 'spatial' | 'reading' | 'tiling' | 'hypercube';
 
 export interface CapacitorConfig {
     /** The container element (for measuring capacity) */

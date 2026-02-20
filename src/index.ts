@@ -35,6 +35,8 @@ export { DevModeController, DevModeIndicator, useDevMode, type DevModeConfig, ty
 export { AudioProjection, type AudioProjectionConfig, type BlockVoicing, type MusicalScale } from './projections/AudioProjection';
 export { SpatialProjection, type SpatialProjectionConfig, type SpatialNode, type SpatialEdge, type NodeShape } from './projections/SpatialProjection';
 export { ReadingProjection, type ReadingConfig, type ReadingMetrics, type Footnote, type TableOfContentsEntry, type ReadingEvent } from './projections/ReadingProjection';
+export { SquaredSquareProjection, type TilingConfig, type TiledSquare, type TilingResult, type TilableBlock, type AspectRatio } from './projections/SquaredSquareProjection';
+export { HypercubeProjection, type HypercubeConfig, type HypercubeNode, type HypercubeEdge, type HypercubeRotationPlane, type ProjectableBlock4D } from './projections/HypercubeProjection';
 
 // Collaboration
 export { CollaborationPresence, type Collaborator, type CursorPosition, type CollaboratorActivity, type PresenceConfig } from './collaboration/CollaborationPresence';
