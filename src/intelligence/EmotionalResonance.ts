@@ -1,10 +1,8 @@
 /**
  * EmotionalResonance — Predict how content lands emotionally
  *
- * NOBODY HAS BUILT THIS.
- *
  * Every editor knows what you wrote. No editor knows how it
- * will make someone FEEL. Not sentiment analysis of the text —
+ * will make someone feel. Not sentiment analysis of the text —
  * predicted emotional response of the READER.
  *
  * "This paragraph will make 40% of readers feel anxious."
@@ -23,27 +21,27 @@
 /** The emotional impact prediction for a block */
 export interface EmotionalImpact {
     /** Block ID */
-    readonly blockId: string;
-    /** Primary emotion evoked */
-    readonly primaryEmotion: Emotion;
-    /** Secondary emotions */
-    readonly secondaryEmotions: Emotion[];
-    /** Emotional intensity (0-1) */
-    readonly intensity: number;
-    /** Valence: positive ↔ negative (-1 to 1) */
-    readonly valence: number;
-    /** Arousal: calming ↔ activating (0 to 1) */
-    readonly arousal: number;
-    /** Dominance: submissive ↔ dominant (0 to 1) */
-    readonly dominance: number;
-    /** Per-audience breakdown */
-    readonly audienceReactions: AudienceReaction[];
-    /** Empathy score: how much will readers relate? (0-1) */
-    readonly empathy: number;
-    /** Persuasion effectiveness (0-1) */
-    readonly persuasion: number;
-    /** Whether this block might alienate some readers */
     readonly alienationRisk: AlienationRisk | null;
+    /** Primary emotion evoked */
+    readonly arousal: number;
+    /** Secondary emotions */
+    readonly audienceReactions: AudienceReaction[];
+    /** Emotional intensity (0-1) */
+    readonly blockId: string;
+    /** Valence: positive ↔ negative (-1 to 1) */
+    readonly dominance: number;
+    /** Arousal: calming ↔ activating (0 to 1) */
+    readonly empathy: number;
+    /** Dominance: submissive ↔ dominant (0 to 1) */
+    readonly intensity: number;
+    /** Per-audience breakdown */
+    readonly persuasion: number;
+    /** Empathy score: how much will readers relate? (0-1) */
+    readonly primaryEmotion: Emotion;
+    /** Persuasion effectiveness (0-1) */
+    readonly secondaryEmotions: Emotion[];
+    /** Whether this block might alienate some readers */
+    readonly valence: number;
 }
 
 export type Emotion =
@@ -58,9 +56,9 @@ export interface AudienceReaction {
     /** Audience segment */
     readonly audience: string;
     /** How this segment would react */
-    readonly reaction: Emotion;
-    /** Intensity of the reaction (0-1) */
     readonly intensity: number;
+    /** Intensity of the reaction (0-1) */
+    readonly reaction: Emotion;
     /** Brief explanation */
     readonly reason: string;
 }
@@ -69,25 +67,25 @@ export interface AlienationRisk {
     /** Who might be alienated */
     readonly audience: string;
     /** Why */
-    readonly reason: string;
-    /** How severe (0-1) */
-    readonly severity: number;
-    /** Suggested mitigation */
     readonly mitigation: string;
+    /** How severe (0-1) */
+    readonly reason: string;
+    /** Suggested mitigation */
+    readonly severity: number;
 }
 
 /** Document-level emotional arc */
 export interface EmotionalArc {
     /** Per-block emotional data */
-    readonly points: Array<{
-        blockId: string;
-        position: number; // 0-1 through the document
-        valence: number;
-        arousal: number;
-        emotion: Emotion;
-    }>;
-    /** Arc shape classification */
     readonly arcType: ArcType;
+    /** Arc shape classification */
+    readonly points: Array<{
+        arousal: number;
+        blockId: string; // 0-1 through the document
+        emotion: Emotion;
+        position: number;
+        valence: number;
+    }>;
     /** Overall emotional trajectory description */
     readonly trajectory: string;
 }
@@ -104,11 +102,11 @@ export type ArcType =
 
 export interface ResonanceConfig {
     /** Inference function */
-    readonly inferFn: (prompt: string) => Promise<string>;
-    /** Target audiences to predict reactions for */
     readonly audiences?: string[];
-    /** Whether to check for alienation risk (default: true) */
+    /** Target audiences to predict reactions for */
     readonly checkAlienation?: boolean;
+    /** Whether to check for alienation risk (default: true) */
+    readonly inferFn: (prompt: string) => Promise<string>;
 }
 
 // ── Emotional Resonance Engine ──────────────────────────────────────
@@ -166,9 +164,8 @@ export class EmotionalResonance {
       "alienationRisk": null | { "audience": string, "reason": string, "severity": number, "mitigation": string }
     }`;
 
-        const response = await this.config.inferFn(prompt);
-
         try {
+            const response = await this.config.inferFn(prompt);
             const result = JSON.parse(response);
             const impact: EmotionalImpact = {
                 blockId,
@@ -188,8 +185,11 @@ export class EmotionalResonance {
             this.notify();
             return impact;
         } catch {
-            // Fallback: heuristic-based
-            return this.heuristicImpact(blockId, text);
+            // Fallback: heuristic-based (covers inference rejection + parse errors)
+            const fallback = this.heuristicImpact(blockId, text);
+            this.blockImpacts.set(blockId, fallback);
+            this.notify();
+            return fallback;
         }
     }
 

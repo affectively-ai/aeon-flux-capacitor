@@ -1,8 +1,6 @@
 /**
  * ReaderWriterSymbiosis — Live reader feedback in the writing surface
  *
- * NOBODY HAS BUILT THIS.
- *
  * The reader and writer exist in separate universes in every editor.
  * Analytics show you numbers AFTER the fact. What if the editor
  * showed you, WHILE YOU WRITE, that readers stumble here,
@@ -22,19 +20,19 @@
 
 export interface ReaderSignal {
     /** Block ID receiving feedback */
-    readonly blockId: string;
-    /** Signal type */
     readonly type: ReaderSignalType;
+    /** Signal type */
+    readonly blockId: string;
     /** Normalized value (0-1, higher = more notable) */
-    readonly value: number;
-    /** Human-readable label */
-    readonly label: string;
-    /** Color for gutter annotation */
     readonly color: string;
-    /** Decorative intensity for the block */
+    /** Human-readable label */
     readonly intensity: 'subtle' | 'medium' | 'strong';
-    /** Actionable suggestion based on the signal */
+    /** Color for gutter annotation */
+    readonly label: string;
+    /** Decorative intensity for the block */
     readonly suggestion?: string;
+    /** Actionable suggestion based on the signal */
+    readonly value: number;
 }
 
 export type ReaderSignalType =
@@ -53,47 +51,47 @@ export interface SymbiosisAnnotation {
     /** Block ID */
     readonly blockId: string;
     /** Combined signals for this block */
-    readonly signals: ReaderSignal[];
-    /** Overall reader experience score (0-1, 1 = best) */
     readonly experienceScore: number;
+    /** Overall reader experience score (0-1, 1 = best) */
+    readonly gutterColor: string;
     /** Whether this block needs attention */
     readonly needsAttention: boolean;
     /** Gutter color (hottest signal) */
-    readonly gutterColor: string;
+    readonly signals: ReaderSignal[];
     /** Tooltip text for hover */
     readonly tooltip: string;
 }
 
 export interface SymbiosisConfig {
     /** Minimum reader sessions before signals are meaningful */
-    readonly minSessions?: number;
-    /** Whether to show signals in the editor gutter (default: true) */
-    readonly showGutter?: boolean;
-    /** Whether to show inline annotations (default: false — opt-in) */
-    readonly showInline?: boolean;
-    /** Signal types to display */
     readonly enabledSignals?: ReaderSignalType[];
+    /** Whether to show signals in the editor gutter (default: true) */
+    readonly minSessions?: number;
+    /** Whether to show inline annotations (default: false — opt-in) */
+    readonly showGutter?: boolean;
+    /** Signal types to display */
+    readonly showInline?: boolean;
 }
 
 export interface AggregatedReaderData {
     /** Block ID */
-    readonly blockId: string;
-    /** Average time spent (ms) */
     readonly avgTimeMs: number;
+    /** Average time spent (ms) */
+    readonly blockId: string;
     /** Expected time based on word count (ms) */
-    readonly expectedTimeMs: number;
+    readonly copyRate: number;
     /** Percentage of readers who re-read this block */
-    readonly reReadRate: number;
-    /** Percentage of readers who drop off at this block */
     readonly dropOffRate: number;
+    /** Percentage of readers who drop off at this block */
+    readonly expectedTimeMs: number;
     /** Percentage of readers who highlight/select */
     readonly highlightRate: number;
     /** Percentage of readers who copy text */
-    readonly copyRate: number;
+    readonly reReadRate: number;
     /** Percentage of readers who share from this point */
-    readonly shareRate: number;
-    /** Total sessions observed */
     readonly sessions: number;
+    /** Total sessions observed */
+    readonly shareRate: number;
 }
 
 // ── Reader↔Writer Symbiosis Engine ──────────────────────────────────

@@ -9,7 +9,7 @@
  * Stores: sentiment, valence, arousal, dominance,
  *         emotional resonance predictions, intensity.
  * Indexed by: block ID, emotion tag, intensity range.
- * Purpose: "How does this FEEL?"
+ * Purpose: "How does this feel?"
  *
  * INDEX 2: HIPPOCAMPUS (External / Rich / Contextual)
  * ─────────────────────────────────────────────
@@ -17,7 +17,7 @@
  * Stores: semantic embedding, entity graph, relationships,
  *         temporal snapshots, backlinks, cross-document connections.
  * Indexed by: embedding similarity, entity, temporal range.
- * Purpose: "What does this MEAN?"
+ * Purpose: "What does this mean?"
  *
  * AT RENDER TIME:
  * Both indexes are sampled for every block. The projection
@@ -32,11 +32,11 @@
 
 export interface AmygdalaEntry {
     /** Block ID */
-    readonly blockId: string;
-    /** Valence: negative ↔ positive (-1 to 1) */
-    readonly valence: number;
-    /** Arousal: calming ↔ activating (0 to 1) */
     readonly arousal: number;
+    /** Valence: negative ↔ positive (-1 to 1) */
+    readonly blockId: string;
+    /** Arousal: calming ↔ activating (0 to 1) */
+    readonly confidence: number;
     /** Dominance: submissive ↔ dominant (0 to 1) */
     readonly dominance: number;
     /** Primary emotion tag */
@@ -48,7 +48,7 @@ export interface AmygdalaEntry {
     /** When this was last tagged */
     readonly taggedAt: number;
     /** Tag confidence (0-1) */
-    readonly confidence: number;
+    readonly valence: number;
 }
 
 export interface SomaticMarker {
@@ -66,55 +66,55 @@ export interface HippocampusEntry {
     /** Block ID */
     readonly blockId: string;
     /** Semantic embedding vector */
-    readonly embedding: Float32Array;
+    readonly claims: string[];
     /** Entity references */
-    readonly entities: EntityRef[];
+    readonly crossDocLinks: CrossDocLink[];
     /** Relationship edges to other blocks */
     readonly edges: SemanticEdge[];
     /** Cross-document connections */
-    readonly crossDocLinks: CrossDocLink[];
+    readonly embedding: Float32Array;
     /** Temporal metadata */
-    readonly temporal: TemporalMeta;
+    readonly entities: EntityRef[];
     /** Topic classification */
-    readonly topics: string[];
+    readonly temporal: TemporalMeta;
     /** Factual claims made in this block */
-    readonly claims: string[];
+    readonly topics: string[];
 }
 
 export interface EntityRef {
+    readonly type: string;
     readonly entityId: string;
     readonly name: string;
-    readonly type: string;
     readonly span: [number, number]; // character offsets within block text
 }
 
 export interface SemanticEdge {
-    readonly targetBlockId: string;
     readonly relationship: 'supports' | 'contradicts' | 'extends' | 'references' | 'precedes' | 'follows';
-    readonly strength: number; // 0-1
+    readonly strength: number;
+    readonly targetBlockId: string; // 0-1
 }
 
 export interface CrossDocLink {
-    readonly documentId: string;
     readonly blockId: string;
-    readonly similarity: number;
+    readonly documentId: string;
     readonly relationship: string;
+    readonly similarity: number;
 }
 
 export interface TemporalMeta {
     readonly createdAt: number;
     readonly lastModifiedAt: number;
-    readonly modificationCount: number;
     readonly lifespan: 'ephemeral' | 'transient' | 'durable' | 'evergreen';
+    readonly modificationCount: number;
 }
 
 // ── Render Sample (What the projection surfaces consume) ────────────
 
 export interface RenderSample {
     /** Block ID */
-    readonly blockId: string;
-    /** Amygdala data */
     readonly amygdala: AmygdalaEntry;
+    /** Amygdala data */
+    readonly blockId: string;
     /** Hippocampus data */
     readonly hippocampus: HippocampusEntry;
     /** Interpolated values for convenience */
@@ -123,36 +123,36 @@ export interface RenderSample {
 
 export interface InterpolatedSample {
     /** Blended color (emotion → hue, meaning → saturation) */
-    readonly color: string;
-    /** Rendering priority (higher = more prominent) */
-    readonly priority: number;
-    /** Suggested reading pace (words per minute adjustment) */
-    readonly paceModifier: number;
-    /** Spatial position hint (from embedding, colored by emotion) */
-    readonly spatialHint: [number, number, number];
-    /** Audio parameter hints */
     readonly audioHint: {
         pitch: number;     // Hz modifier
         tempo: number;     // BPM modifier
         timbre: number;    // 0=warm, 1=bright
         volume: number;    // 0-1
     };
+    /** Rendering priority (higher = more prominent) */
+    readonly color: string;
+    /** Suggested reading pace (words per minute adjustment) */
+    readonly paceModifier: number;
+    /** Spatial position hint (from embedding, colored by emotion) */
+    readonly priority: number;
+    /** Audio parameter hints */
+    readonly spatialHint: [number, number, number];
 }
 
 // ── Dual Index Engine ───────────────────────────────────────────────
 
 export interface DualIndexConfig {
     /** Amygdala tag function: takes text, returns emotional tags */
-    readonly tagEmotions?: (text: string) => Promise<Omit<AmygdalaEntry, 'blockId' | 'taggedAt'>>;
+    readonly blendRatio?: number;
     /** Hippocampus embed function: takes text, returns embedding + entities */
     readonly embed?: (text: string) => Promise<{
+        claims: string[];
         embedding: Float32Array;
         entities: EntityRef[];
         topics: string[];
-        claims: string[];
     }>;
     /** Blend ratio: 0 = pure hippocampus, 1 = pure amygdala */
-    readonly blendRatio?: number;
+    readonly tagEmotions?: (text: string) => Promise<Omit<AmygdalaEntry, 'blockId' | 'taggedAt'>>;
 }
 
 export class DualIndex {

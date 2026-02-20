@@ -1,7 +1,7 @@
 /**
  * <Capacitor> — The Intelligent Container
  *
- * THE CHASSIS. Every engine we built plugs into this.
+ * THE CHASSIS. Every engine plugs into this.
  *
  * A Capacitor wraps a document and makes it alive:
  *   - DualIndex (Amygdala + Hippocampus) indexes every block
@@ -31,15 +31,15 @@
  */
 
 import type {
+    ContainerConstraints,
     ContentItem,
     ContentValue,
     ContentWeight,
-    ContainerConstraints,
-    LayoutResult,
-    PersonalizationContext,
     ESIKnapsackConfig,
     ESIValueOverride,
     LayoutManifest,
+    LayoutResult,
+    PersonalizationContext,
     RenderMode,
 } from '../layout/ContentKnapsack';
 import { ContentKnapsack } from '../layout/ContentKnapsack';
@@ -47,8 +47,8 @@ import { ContentKnapsack } from '../layout/ContentKnapsack';
 import type {
     AmygdalaEntry,
     HippocampusEntry,
-    RenderSample,
     InterpolatedSample,
+    RenderSample,
 } from '../core/DualIndex';
 import { DualIndex } from '../core/DualIndex';
 
@@ -58,52 +58,52 @@ export type ProjectionType = 'text' | 'audio' | 'spatial' | 'reading';
 
 export interface CapacitorConfig {
     /** The container element (for measuring capacity) */
+    readonly autoSolve?: boolean;
+    /** Active projection surface */
     readonly container: {
         offsetWidth: number;
         offsetHeight: number;
     };
-    /** Active projection surface */
-    readonly projection?: ProjectionType;
     /** ESI configuration for personalization */
-    readonly esi?: ESIKnapsackConfig;
-    /** DualIndex configuration */
     readonly dualIndex?: {
         /** Amygdala/Hippocampus blend ratio (0 = all context, 1 = all emotion) */
         blendRatio?: number;
     };
+    /** DualIndex configuration */
+    readonly embedFn?: (text: string) => Promise<number[]>;
     /** ContentKnapsack value weights */
+    readonly esi?: ESIKnapsackConfig;
+    /** Whether to auto-re-solve on block changes */
+    readonly inferFn?: (prompt: string) => Promise<string>;
+    /** Debounce interval for auto-solve (ms) */
+    readonly maxCognitiveLoad?: number;
+    /** Whether structural blocks (headings) must always be visible */
+    readonly minBlocks?: number;
+    /** Minimum blocks to always show */
+    readonly preserveStructure?: boolean;
+    /** Maximum cognitive load budget */
+    readonly projection?: ProjectionType;
+    /** Transition animation duration (ms) */
+    readonly solveDebounceMs?: number;
+    /** Inference function for intelligence modules */
+    readonly transitionMs?: number;
+    /** Embedding function */
     readonly valueWeights?: {
         emotion: number;
-        relevance: number;
-        freshness: number;
         engagement: number;
+        freshness: number;
+        relevance: number;
     };
-    /** Whether to auto-re-solve on block changes */
-    readonly autoSolve?: boolean;
-    /** Debounce interval for auto-solve (ms) */
-    readonly solveDebounceMs?: number;
-    /** Whether structural blocks (headings) must always be visible */
-    readonly preserveStructure?: boolean;
-    /** Minimum blocks to always show */
-    readonly minBlocks?: number;
-    /** Maximum cognitive load budget */
-    readonly maxCognitiveLoad?: number;
-    /** Transition animation duration (ms) */
-    readonly transitionMs?: number;
-    /** Inference function for intelligence modules */
-    readonly inferFn?: (prompt: string) => Promise<string>;
-    /** Embedding function */
-    readonly embedFn?: (text: string) => Promise<number[]>;
 }
 
 /** A block registered with the Capacitor */
 export interface CapacitorBlock {
     readonly id: string;
-    readonly text: string;
     readonly type: 'heading' | 'paragraph' | 'code' | 'image' | 'list' | 'blockquote' | 'table';
+    readonly heightPx?: number;
     readonly structural?: boolean;
     /** Estimated render height (if known) */
-    readonly heightPx?: number;
+    readonly text: string;
 }
 
 /** Lifecycle events emitted by the Capacitor */
@@ -119,20 +119,20 @@ export type CapacitorEvent =
 /** The full state of a mounted Capacitor */
 export interface CapacitorState {
     /** Whether the Capacitor is mounted */
-    readonly mounted: boolean;
-    /** Active projection surface */
-    readonly projection: ProjectionType;
-    /** Last layout result */
-    readonly layout: LayoutResult | null;
-    /** Whether layout is personalized */
-    readonly personalized: boolean;
-    /** Reader DID if personalized */
-    readonly readerDid?: string;
-    /** Number of indexed blocks */
     readonly blockCount: number;
-    /** Container dimensions */
-    readonly containerWidth: number;
+    /** Active projection surface */
     readonly containerHeight: number;
+    /** Last layout result */
+    readonly containerWidth: number;
+    /** Whether layout is personalized */
+    readonly layout: LayoutResult | null;
+    /** Reader DID if personalized */
+    readonly mounted: boolean;
+    /** Number of indexed blocks */
+    readonly personalized: boolean;
+    /** Container dimensions */
+    readonly projection: ProjectionType;
+    readonly readerDid?: string;
 }
 
 // ── Capacitor ───────────────────────────────────────────────────────
@@ -223,26 +223,11 @@ export class Capacitor {
         this.blocks.set(block.id, block);
 
         // Index in DualIndex (Amygdala: fast emotional tags)
-        const amygdala: AmygdalaEntry = {
-            blockId: block.id,
-            sentiment: 0,      // populated by inference
-            valence: 0,
-            arousal: 0,
-            dominance: 0,
-            somaticMarkers: [],
-            timestamp: Date.now(),
-        };
-
-        // Index in DualIndex (Hippocampus: rich context)
-        const hippocampus: HippocampusEntry = {
-            blockId: block.id,
-            embedding: [],      // populated by embedFn
-            entities: [],
-            relationships: [],
-            crossDocLinks: [],
-            temporalMeta: { created: Date.now(), lastModified: Date.now() },
-            claims: [],
-        };
+        let valence = 0;
+        let arousal = 0.3;
+        let dominance = 0.5;
+        let emotion = 'neutral';
+        let intensity = 0.2;
 
         // Run inference for emotional tagging if available
         if (this.config.inferFn && block.text.length > 0) {
@@ -253,22 +238,56 @@ export class Capacitor {
                 );
                 try {
                     const parsed = JSON.parse(emotionResult);
-                    amygdala.valence = parsed.valence ?? 0;
-                    amygdala.arousal = parsed.arousal ?? 0;
-                    amygdala.dominance = parsed.dominance ?? 0;
-                    amygdala.sentiment = parsed.sentiment ?? 0;
+                    valence = parsed.valence ?? 0;
+                    arousal = parsed.arousal ?? 0.3;
+                    dominance = parsed.dominance ?? 0.5;
+                    intensity = Math.abs(valence) * arousal;
+                    emotion = valence > 0.2 ? 'joy' : valence < -0.2 ? 'sadness' : 'neutral';
                 } catch { /* use defaults */ }
             } catch { /* inference failed, use defaults */ }
         }
 
+        const amygdala: AmygdalaEntry = {
+            blockId: block.id,
+            valence,
+            arousal,
+            dominance,
+            emotion,
+            intensity,
+            somaticMarkers: [],
+            taggedAt: Date.now(),
+            confidence: this.config.inferFn ? 0.7 : 0.3,
+        };
+
+        // Index in DualIndex (Hippocampus: rich context)
+        let embedding = new Float32Array(384);
+
         // Run embedding if available
         if (this.config.embedFn && block.text.length > 0) {
             try {
-                hippocampus.embedding = await this.config.embedFn(block.text);
+                const embedResult = await this.config.embedFn(block.text);
+                embedding = new Float32Array(embedResult);
             } catch { /* embedding failed, use empty */ }
         }
 
-        this.dualIndex.index(amygdala, hippocampus);
+        const hippocampus: HippocampusEntry = {
+            blockId: block.id,
+            embedding,
+            entities: [],
+            edges: [],
+            crossDocLinks: [],
+            temporal: {
+                createdAt: Date.now(),
+                lastModifiedAt: Date.now(),
+                modificationCount: 1,
+                lifespan: 'durable',
+            },
+            topics: [],
+            claims: [],
+        };
+
+        this.dualIndex.setAmygdala(amygdala);
+        this.dualIndex.setHippocampus(hippocampus);
 
         // Sample both indexes for knapsack value
         const sample = this.dualIndex.sample(block.id);
@@ -288,8 +307,8 @@ export class Capacitor {
 
         const value: Omit<ContentValue, 'compositeValue'> = {
             blockId: block.id,
-            emotionalIntensity: sample ? sample.emotionalBlend : amygdala.arousal,
-            contextualRelevance: sample ? sample.contextualBlend : 0.5,
+            emotionalIntensity: sample ? sample.interpolated.priority : amygdala.arousal,
+            contextualRelevance: sample ? (1 - sample.interpolated.priority) : 0.5,
             freshness: 1.0, // brand new
             readerEngagement: 0.5, // neutral until reader data arrives
         };
@@ -427,7 +446,10 @@ export class Capacitor {
      * Interpolate both indexes for a range of blocks.
      */
     interpolateBlocks(blockIds: string[]): InterpolatedSample[] {
-        return this.dualIndex.interpolate(blockIds);
+        return blockIds
+            .map(id => this.dualIndex.sample(id))
+            .filter((s): s is RenderSample => s !== null)
+            .map(s => s.interpolated);
     }
 
     /**
