@@ -594,13 +594,13 @@ function buildFollowUpQuestion(
 
   if (mode === 'question') {
     return friendly
-      ? `Want to go deeper? Try asking about a specific topic within ${friendly}.`
-      : 'Want to go deeper? Try asking about a specific workflow or feature.';
+      ? `Want to go deeper into ${friendly}? Just ask.`
+      : 'Want to go deeper? Just ask.';
   }
 
   return friendly
-    ? `Try asking ${assistantLabel} about anything in ${friendly} \u2014 concepts, APIs, or how things connect.`
-    : `Try asking ${assistantLabel} about any concept, API, or workflow.`;
+    ? `Ask me anything about ${friendly}.`
+    : 'Ask me anything.';
 }
 
 function humanizeCategory(category: string | null): string | null {
@@ -612,10 +612,26 @@ function humanizeCategory(category: string | null): string | null {
     const parts = category.split('/');
     const ebookSlug = parts[1];
     if (ebookSlug) {
-      return ebookSlug
+      const words = ebookSlug
         .replace(/^\d+-/u, '')
         .replace(/-/gu, ' ')
-        .replace(/\b\w/gu, (c) => c.toUpperCase());
+        .split(' ')
+        .filter(Boolean);
+      // Sentence case: capitalize first word, leave rest lowercase
+      // except known acronyms
+      const ACRONYMS = new Set(['ai', 'api', 'cpu', 'gpu', 'llm', 'os', 'tts', 'stt', 'ui', 'vl', 'wasm', 'zk']);
+      const humanized = words.map((w, i) => {
+        const lower = w.toLowerCase();
+        if (ACRONYMS.has(lower)) return lower.toUpperCase();
+        if (i === 0) return lower.charAt(0).toUpperCase() + lower.slice(1);
+        return lower;
+      }).join(' ');
+      // Truncate if too long
+      if (humanized.length > 40) {
+        const truncated = humanized.slice(0, 37).replace(/\s+\S*$/, '');
+        return `\u201c${truncated}\u2026\u201d`;
+      }
+      return `\u201c${humanized}\u201d`;
     }
     return 'the library';
   }
