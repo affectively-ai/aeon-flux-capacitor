@@ -218,7 +218,8 @@ export function invokeESIGuru(input: ESIGuruInput): ESIGuruGuide {
     rankedPool,
     currentPage,
     currentCategory,
-    recentCategoryAffinity
+    recentCategoryAffinity,
+    mode
   );
   const rankedInFocus = focusCategory
     ? rankedPool.filter((item) => item.category === focusCategory)
@@ -343,8 +344,11 @@ function rankSidebarItem(input: {
   }
 
   if (input.currentCategory && category === input.currentCategory) {
-    score += input.queryTokens.size > 0 ? 2 : 5;
-    reasonParts.push('in the same section');
+    // Only boost current category when browsing, not when searching
+    if (input.queryTokens.size === 0) {
+      score += 5;
+      reasonParts.push('in the same section');
+    }
   }
 
   if (
@@ -530,7 +534,8 @@ function pickFocusCategory(
   rankedPool: readonly RankedSidebarItem[],
   currentPage: ESIGuruSidebarItem | undefined,
   currentCategory: string | null,
-  recentCategoryAffinity: ReadonlyMap<string, number>
+  recentCategoryAffinity: ReadonlyMap<string, number>,
+  mode: ESIGuruMode = 'journey'
 ): string | null {
   if (rankedPool.length === 0) {
     return currentCategory;
@@ -542,7 +547,8 @@ function pickFocusCategory(
     categoryScores.set(item.category ?? 'General', existing + item.score);
   }
 
-  if (currentPage) {
+  // Only boost current page's category when browsing, not searching
+  if (mode === 'journey' && currentPage) {
     const pageCategory = normalizeCategory(currentPage.category);
     if (pageCategory) {
       categoryScores.set(
@@ -553,9 +559,11 @@ function pickFocusCategory(
   }
 
   for (const [category, boost] of recentCategoryAffinity) {
+    // Reduce recency bias during search
+    const weight = mode === 'question' ? 0.15 : 0.5;
     categoryScores.set(
       category,
-      (categoryScores.get(category) ?? 0) + boost * 0.5
+      (categoryScores.get(category) ?? 0) + boost * weight
     );
   }
 
@@ -575,9 +583,7 @@ function buildSummary(
   const friendly = humanizeCategory(focusCategory);
 
   if (mode === 'question' && hasMeaningfulText(query)) {
-    return friendly
-      ? `Searching ${friendly} for \u201c${query?.trim()}\u201d`
-      : `Searching for \u201c${query?.trim()}\u201d`;
+    return `Searching all docs for \u201c${query?.trim()}\u201d`;
   }
 
   return friendly
@@ -593,9 +599,7 @@ function buildFollowUpQuestion(
   const friendly = humanizeCategory(focusCategory);
 
   if (mode === 'question') {
-    return friendly
-      ? `Want to go deeper into ${friendly}? Just ask.`
-      : 'Want to go deeper? Just ask.';
+    return 'Try refining your search or ask a different question.';
   }
 
   return friendly
