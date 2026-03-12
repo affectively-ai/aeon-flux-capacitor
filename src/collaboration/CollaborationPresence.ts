@@ -8,7 +8,7 @@
  * Built on Yjs awareness protocol + embedding context.
  */
 
-import * as Y from 'yjs';
+import { QDoc, QMap, QArray, QText } from '@affectively/gnosis';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ export type CollaboratorActivity =
 
 export interface PresenceConfig {
   /** The Yjs document */
-  readonly ydoc: Y.Doc;
+  readonly ydoc: QDoc;
   /** The local user's DID */
   readonly localDid: string;
   /** The local user's display name */

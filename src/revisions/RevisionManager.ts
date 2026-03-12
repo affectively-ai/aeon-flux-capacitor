@@ -7,7 +7,7 @@
  * branching, merge, cherry-pick, and time-travel.
  */
 
-import * as Y from 'yjs';
+import { QDoc, QMap, QArray, QText } from '@affectively/gnosis';
 import type { AeonDocument } from '../document/document';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -213,12 +213,12 @@ export class RevisionManager {
       authorDid
     );
 
-    // Create a new Y.Doc and apply the target snapshot
-    const restoredDoc = new Y.Doc();
-    Y.applyUpdate(restoredDoc, targetRevision.snapshot);
+    // Create a new QDoc and apply the target snapshot
+    const restoredDoc = new QDoc();
+    restoredDoc.applyUpdate(targetRevision.snapshot);
 
     // Apply the restored state as an update to the current doc
-    const restoredState = Y.encodeStateAsUpdate(restoredDoc);
+    const restoredState = restoredDoc.encodeStateAsUpdate();
     doc.applyUpdate(restoredState);
     restoredDoc.destroy();
 
@@ -341,15 +341,15 @@ export class RevisionManager {
       const parentRevision = this.revisions.get(revision.parentId);
       if (parentRevision) {
         // Compute the delta between parent and this revision
-        const tempDoc = new Y.Doc();
-        Y.applyUpdate(tempDoc, parentRevision.snapshot);
-        const stateVector = Y.encodeStateVector(tempDoc);
+        const tempDoc = new QDoc();
+        tempDoc.applyUpdate(parentRevision.snapshot);
+        const stateVector = tempDoc.encodeStateVector();
         tempDoc.destroy();
 
         // Get only the changes from this specific revision
-        const delta = new Y.Doc();
-        Y.applyUpdate(delta, revision.snapshot);
-        const changes = Y.encodeStateAsUpdate(delta, stateVector);
+        const delta = new QDoc();
+        delta.applyUpdate(revision.snapshot);
+        const changes = delta.encodeStateAsUpdate(stateVector);
         delta.destroy();
 
         // Apply just those changes to the current document
@@ -410,12 +410,12 @@ export class RevisionManager {
     if (!revA || !revB) return null;
 
     // Reconstruct both documents
-    const docA = new Y.Doc();
-    Y.applyUpdate(docA, revA.snapshot);
+    const docA = new QDoc();
+    docA.applyUpdate(revA.snapshot);
     const fragA = docA.getXmlFragment('document');
 
-    const docB = new Y.Doc();
-    Y.applyUpdate(docB, revB.snapshot);
+    const docB = new QDoc();
+    docB.applyUpdate(revB.snapshot);
     const fragB = docB.getXmlFragment('document');
 
     // Extract blocks from both
@@ -440,13 +440,14 @@ export class RevisionManager {
 
     const revisions = this.listRevisions().reverse(); // oldest first
     for (const revision of revisions) {
-      const doc = new Y.Doc();
-      Y.applyUpdate(doc, revision.snapshot);
+      const doc = new QDoc();
+      doc.applyUpdate(revision.snapshot);
       const fragment = doc.getXmlFragment('document');
 
       for (let i = 0; i < fragment.length; i++) {
         const item = fragment.get(i);
-        if (item instanceof Y.XmlElement) {
+        // TODO: QDoc migration — instanceof check may need QXmlElement equivalent
+        if (item && typeof item === 'object' && 'getAttribute' in item) {
           const blockId = item.getAttribute('id');
           if (blockId) {
             blame.set(blockId, {
@@ -523,11 +524,12 @@ interface BlockSnapshot {
   position: number;
 }
 
-function extractBlocks(fragment: Y.XmlFragment): BlockSnapshot[] {
+function extractBlocks(fragment: any): BlockSnapshot[] {
   const blocks: BlockSnapshot[] = [];
   for (let i = 0; i < fragment.length; i++) {
     const item = fragment.get(i);
-    if (item instanceof Y.XmlElement) {
+    // TODO: QDoc migration — instanceof check may need QXmlElement equivalent
+    if (item && typeof item === 'object' && 'getAttribute' in item) {
       blocks.push({
         id: item.getAttribute('id') || `pos-${i}`,
         type: item.nodeName,

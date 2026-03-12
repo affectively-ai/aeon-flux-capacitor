@@ -6,7 +6,7 @@
  * the "markdown view" possible in the editor.
  */
 
-import * as Y from 'yjs';
+import { QDoc, QMap, QArray, QText } from '@affectively/gnosis';
 import type { AeonDocument } from './document';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -186,12 +186,16 @@ function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
   return blocks;
 }
 
-/** Convert a parsed block to a Yjs XmlElement */
+// TODO: QDoc migration — XmlElement/XmlText constructors not yet available in QDoc
+/** Convert a parsed block to an XmlElement */
 function blockToXmlElement(
   block: MarkdownBlock,
   generateId: () => string
-): Y.XmlElement {
-  const element = new Y.XmlElement(block.type);
+): any {
+  // TODO: QDoc migration — replace with QDoc XmlElement equivalent when available
+  const element = { type: block.type, attributes: {} as Record<string, string>, children: [] as any[] } as any;
+  element.setAttribute = (k: string, v: string) => { element.attributes[k] = v; };
+  element.insert = (pos: number, items: any[]) => { element.children.splice(pos, 0, ...items); };
   element.setAttribute('id', generateId());
   element.setAttribute('embedding-id', generateId());
 
@@ -200,7 +204,8 @@ function blockToXmlElement(
   }
 
   if (block.content) {
-    const textNode = new Y.XmlText(block.content);
+    // TODO: QDoc migration — replace with QDoc XmlText equivalent when available
+    const textNode = { content: block.content, toString: () => block.content };
     element.insert(0, [textNode]);
   }
 
@@ -217,8 +222,8 @@ export function documentToMarkdown(doc: AeonDocument): string {
   return blocks.map(xmlElementToMarkdown).join('\n\n');
 }
 
-/** Convert a Yjs XmlElement back to markdown text */
-function xmlElementToMarkdown(element: Y.XmlElement): string {
+/** Convert an XmlElement back to markdown text */
+function xmlElementToMarkdown(element: any): string {
   const type = element.nodeName;
   const text = extractText(element);
 
@@ -280,15 +285,20 @@ function xmlElementToMarkdown(element: Y.XmlElement): string {
   }
 }
 
-/** Extract plain text from a Yjs XmlElement */
-function extractText(element: Y.XmlElement): string {
+/** Extract plain text from an XmlElement */
+function extractText(element: any): string {
   const parts: string[] = [];
   for (let i = 0; i < element.length; i++) {
     const child = element.get(i);
-    if (child instanceof Y.XmlText) {
-      parts.push(child.toString());
-    } else if (child instanceof Y.XmlElement) {
-      parts.push(extractText(child));
+    // TODO: QDoc migration — instanceof checks need QDoc equivalents
+    if (child && typeof child === 'object' && 'toString' in child) {
+      if ('get' in child) {
+        // XmlElement-like: recurse
+        parts.push(extractText(child));
+      } else {
+        // XmlText-like: get string
+        parts.push(child.toString());
+      }
     }
   }
   return parts.join('');
