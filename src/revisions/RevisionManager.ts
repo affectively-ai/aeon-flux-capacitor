@@ -448,7 +448,9 @@ export class RevisionManager {
         const item = fragment.get(i);
         // TODO: QDoc migration — instanceof check may need QXmlElement equivalent
         if (item && typeof item === 'object' && 'getAttribute' in item) {
-          const blockId = item.getAttribute('id');
+          const blockId = (
+            item as { getAttribute: (name: string) => string | null }
+          ).getAttribute('id');
           if (blockId) {
             blame.set(blockId, {
               blockId,

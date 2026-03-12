@@ -6,7 +6,7 @@
  * grant edit access to a heading without exposing the whole document.
  */
 
-import type * as Y from 'yjs';
+import type * as Y from '@affectively/gnosis';
 
 // ── Types ───────────────────────────────────────────────────────────
 

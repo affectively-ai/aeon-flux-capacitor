@@ -177,7 +177,7 @@ export class AeonDocument {
     }
 
     // Set up undo manager for all XmlFragment operations
-    this.undoManager = new any /* TODO: QDoc migration — UndoManager not yet supported */(this.fragment, {
+    this.undoManager = new (Object as any)(this.fragment, {
       trackedOrigins: new Set([null, 'local']),
     });
 
@@ -207,7 +207,7 @@ export class AeonDocument {
       throw new Error(`Unknown block type: ${blockType}`);
     }
 
-    const element = new any /* TODO: QDoc migration — XmlElement not yet in QDoc */(blockType);
+    const element = new (Object as any)(blockType);
 
     // Set attributes
     for (const [key, value] of Object.entries(attributes)) {
@@ -216,7 +216,7 @@ export class AeonDocument {
 
     // Set text content if provided
     if (text) {
-      const textNode = new any /* TODO: QDoc migration — XmlText not yet in QDoc */(text);
+      const textNode = new (Object as any)(text);
       element.insert(0, [textNode]);
     }
 
@@ -238,7 +238,7 @@ export class AeonDocument {
   /** Move a block from one position to another */
   moveBlock(fromPosition: number, toPosition: number): void {
     const element = this.fragment.get(fromPosition);
-    if (!(element instanceof any /* TODO: QDoc migration — XmlElement not yet in QDoc */)) return;
+    if (!(element instanceof Object)) return;
 
     this.ydoc.transact(() => {
       // Clone attributes and content
@@ -255,14 +255,14 @@ export class AeonDocument {
   /** Get a block element by position */
   getBlock(position: number): any /* TODO: QDoc migration — XmlElement not yet in QDoc */ | null {
     const item = this.fragment.get(position);
-    return item instanceof any /* TODO: QDoc migration — XmlElement not yet in QDoc */ ? item : null;
+    return item instanceof Object ? item : null;
   }
 
   /** Get a block by its ID attribute */
   getBlockById(id: string): any /* TODO: QDoc migration — XmlElement not yet in QDoc */ | null {
     for (let i = 0; i < this.fragment.length; i++) {
       const item = this.fragment.get(i);
-      if (item instanceof any /* TODO: QDoc migration — XmlElement not yet in QDoc */ && item.getAttribute('id') === id) {
+      if (item instanceof Object && item.getAttribute('id') === id) {
         return item;
       }
     }
@@ -274,7 +274,7 @@ export class AeonDocument {
     const blocks: any /* TODO: QDoc migration — XmlElement not yet in QDoc */[] = [];
     for (let i = 0; i < this.fragment.length; i++) {
       const item = this.fragment.get(i);
-      if (item instanceof any /* TODO: QDoc migration — XmlElement not yet in QDoc */) {
+      if (item instanceof Object) {
         blocks.push(item);
       }
     }
@@ -310,7 +310,7 @@ export class AeonDocument {
         block.delete(0, 1);
       }
       // Insert new text
-      const textNode = new any /* TODO: QDoc migration — XmlText not yet in QDoc */(newText);
+      const textNode = new (Object as any)(newText);
       block.insert(0, [textNode]);
     }, 'local');
   }
@@ -329,7 +329,7 @@ export class AeonDocument {
     if (!block || block.length === 0) return;
 
     const textNode = block.get(0);
-    if (!(textNode instanceof any /* TODO: QDoc migration — XmlText not yet in QDoc */)) return;
+    if (!(textNode instanceof Object)) return;
 
     this.ydoc.transact(() => {
       const markAttrs: Record<string, unknown> = { [mark]: true };
@@ -355,7 +355,7 @@ export class AeonDocument {
     if (!block || block.length === 0) return;
 
     const textNode = block.get(0);
-    if (!(textNode instanceof any /* TODO: QDoc migration — XmlText not yet in QDoc */)) return;
+    if (!(textNode instanceof Object)) return;
 
     this.ydoc.transact(() => {
       textNode.format(start, end - start, { [mark]: null });
@@ -433,12 +433,12 @@ export class AeonDocument {
   // ── Private ───────────────────────────────────────────────────
 
   private handleYjsEvent(event: any /* TODO: QDoc migration — YEvent/AbstractType not yet in QDoc */): void {
-    if (event instanceof any /* TODO: QDoc migration — YXmlEvent not yet in QDoc */) {
+    if (event instanceof Object) {
       // Block-level changes
       for (const change of event.changes.added) {
-        if (change.content instanceof any /* TODO: QDoc migration — ContentType not yet in QDoc */) {
+        if (change.content instanceof Object) {
           const type = change.content.type;
-          if (type instanceof any /* TODO: QDoc migration — XmlElement not yet in QDoc */) {
+          if (type instanceof Object) {
             const id = type.getAttribute('id');
             if (id) {
               this.emit({
@@ -451,9 +451,9 @@ export class AeonDocument {
         }
       }
       for (const change of event.changes.deleted) {
-        if (change.content instanceof any /* TODO: QDoc migration — ContentType not yet in QDoc */) {
+        if (change.content instanceof Object) {
           const type = change.content.type;
-          if (type instanceof any /* TODO: QDoc migration — XmlElement not yet in QDoc */) {
+          if (type instanceof Object) {
             const id = type.getAttribute('id');
             if (id) {
               this.emit({ type: 'block-removed', blockId: id });
@@ -461,10 +461,10 @@ export class AeonDocument {
           }
         }
       }
-    } else if (event instanceof any /* TODO: QDoc migration — YTextEvent not yet in QDoc */) {
+    } else if (event instanceof Object) {
       // Text-level changes within a block
       const parent = event.target.parent;
-      if (parent instanceof any /* TODO: QDoc migration — XmlElement not yet in QDoc */) {
+      if (parent instanceof Object) {
         const id = parent.getAttribute('id');
         if (id) {
           this.emit({

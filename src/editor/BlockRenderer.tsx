@@ -7,7 +7,7 @@
  */
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import type * as Y from 'yjs';
+import type * as Y from '@affectively/gnosis';
 import { useEditor } from './EditorRoot';
 
 // ── Types ───────────────────────────────────────────────────────────

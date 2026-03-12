@@ -258,7 +258,10 @@ export class SpatialProjection {
     this.containerEl.appendChild(this.renderer.domElement);
 
     // ── Controls ─────────────────────────────────────────────
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls = new OrbitControls(
+      this.camera as any,
+      this.renderer.domElement
+    );
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
     this.controls.autoRotate = this.config.autoRotate;

@@ -468,7 +468,7 @@ export class ContentKnapsack {
       let included = decisions.filter((d) => d.included).length;
       for (const decision of hidden) {
         if (included >= constraints.minBlocks) break;
-        decision.renderMode = 'collapsed' as RenderMode;
+        (decision as { renderMode: RenderMode }).renderMode = 'collapsed';
         (decision as { included: boolean }).included = true;
         (decision as { allocatedHeight: number }).allocatedHeight =
           this.weights.get(decision.blockId)?.minWeight ?? 24;
@@ -509,6 +509,7 @@ export class ContentKnapsack {
       utilization: totalHeight / Math.max(1, capacity),
       cognitiveLoad: totalCognitiveLoad,
       overflow,
+      personalized: false,
       meta: {
         solveTimeMs: elapsed,
         algorithm: optional.length > 100 ? 'greedy' : 'fractional',

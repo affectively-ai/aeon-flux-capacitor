@@ -134,8 +134,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     for (const entity of entities.getAllEntities()) {
       items.push({
         id: `entity-${entity.id}`,
-        label: entity.text,
-        subtitle: `${entity.type} · ${entity.occurrences.length} occurrences`,
+        label: entity.displayName,
+        subtitle: `${entity.type} · ${entity.occurrenceCount} occurrences`,
         category: 'entity',
         icon: entityIcon(entity.type),
         keywords: [entity.type],
